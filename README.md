@@ -49,7 +49,7 @@ Para clonar y ejecutar esta aplicación, sigue los siguientes pasos:
 /test                     # Pruebas unitarias y de integración
 ```
 
-Contribución
+## Contribución
 Para mejorar esta aplicación, por favor sigue los siguientes pasos:
 
 ```bash
@@ -60,10 +60,10 @@ Para mejorar esta aplicación, por favor sigue los siguientes pasos:
   Abre un pull request en este repositorio.
   ```
 
-##Licencia
+## Licencia
 Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para más detalles.
 
-##Contacto
+## Contacto
 Para cualquier pregunta o sugerencia, puedes contactar a través de [1520923@utp.edu.pe] o crear un issue en este repositorio.
 
    
