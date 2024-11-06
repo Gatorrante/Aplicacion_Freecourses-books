@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_1/model/course.dart';
 import 'Login.dart';
 import 'widgets/text_styles.dart';
 import 'widgets/app_styles.dart';
-import 'widgets/detalle_libro.dart'; 
+import 'widgets/detalle_libro.dart';
+import 'widgets/config.dart'; 
 import 'package:flutter_application_1/services/annas_archive_api.dart';
+import 'widgets/UserPageConfig/ProfileCard.dart';
+import 'widgets/UserPageConfig/CategoryButtons.dart';
+import 'widgets/UserPageConfig/SwitchButtons.dart';
+import 'widgets/UserPageConfig/CoursesContainer.dart';
+import 'widgets/UserPageConfig/LibraryContainer.dart';
 
 class UserPage extends StatefulWidget {
   const UserPage({super.key});
@@ -18,15 +25,22 @@ class _UserPageState extends State<UserPage> {
   bool _showCourses = true;
   User? user;
   List<Map<String, dynamic>> favoriteBooks = [];
+  List<Course> favoriteCourses = [];
+  List<Course> filteredCourses = [];
   bool _isSearching = false;
   TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _filteredBooks = [];
+  String? _firstName;
+  String? _lastName;
+  String? _university;
 
   @override
   void initState() {
     super.initState();
     user = FirebaseAuth.instance.currentUser;
     _fetchFavoriteBooks();
+    _fetchFavoriteCourses();
+    _fetchUserInfo();
   }
 
   Future<void> _fetchFavoriteBooks() async {
@@ -38,6 +52,33 @@ class _UserPageState extends State<UserPage> {
         favoriteBooks = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
         _filteredBooks = favoriteBooks;
       });
+    }
+  }
+
+  Future<void> _fetchFavoriteCourses() async {
+    if (user != null) {
+      final userDoc = FirebaseFirestore.instance.collection('users').doc(user!.uid);
+      final coursesCollection = userDoc.collection('courses');
+      final snapshot = await coursesCollection.get();
+      setState(() {
+        favoriteCourses = snapshot.docs.map((doc) => Course.fromJson(doc.data())).toList();
+        filteredCourses = favoriteCourses;
+      });
+    }
+  }
+
+  Future<void> _fetchUserInfo() async {
+    if (user != null) {
+      final userDoc = FirebaseFirestore.instance.collection('users').doc(user!.uid);
+      final snapshot = await userDoc.get();
+      if (snapshot.exists) {
+        final data = snapshot.data()!;
+        setState(() {
+          _firstName = data['firstName'];
+          _lastName = data['lastName'];
+          _university = data['university'];
+        });
+      }
     }
   }
 
@@ -56,14 +97,28 @@ class _UserPageState extends State<UserPage> {
     });
   }
 
-  Future<void> _removeFromFavorites(String md5) async {
+  void _filterCourses(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        filteredCourses = favoriteCourses;
+      } else {
+        filteredCourses = favoriteCourses.where((course) {
+          final titleLower = course.title.toLowerCase();
+          final searchLower = query.toLowerCase();
+          return titleLower.contains(searchLower);
+        }).toList();
+      }
+    });
+  }
+
+  Future<void> _removeFromFavorites(String title) async {
     if (user != null) {
       final userDoc = FirebaseFirestore.instance.collection('users').doc(user!.uid);
-      final favoritesCollection = userDoc.collection('favorites');
-      await favoritesCollection.doc(md5).delete();
+      final coursesCollection = userDoc.collection('courses');
+      await coursesCollection.doc(title).delete();
       setState(() {
-        favoriteBooks.removeWhere((book) => book['md5'] == md5);
-        _filteredBooks.removeWhere((book) => book['md5'] == md5);
+        favoriteCourses.removeWhere((course) => course.title == title);
+        filteredCourses.removeWhere((course) => course.title == title);
       });
     }
   }
@@ -71,7 +126,7 @@ class _UserPageState extends State<UserPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C2E), 
+      backgroundColor: const Color(0xFF1C1C2E),
       appBar: AppBar(
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         title: const Row(
@@ -103,7 +158,13 @@ class _UserPageState extends State<UserPage> {
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
             onPressed: () {
-              // Acción para el botón de configuración
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ConfigPage()),
+              ).then((_) {
+                _fetchUserInfo();
+                _fetchFavoriteCourses();
+              }); // Recargar datos del usuario al volver
             },
           ),
         ],
@@ -114,11 +175,23 @@ class _UserPageState extends State<UserPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProfileCard(),
+            ProfileCard(
+              firstName: _firstName,
+              lastName: _lastName,
+              university: _university,
+              email: user?.email,
+            ),
             const SizedBox(height: 20),
-            _buildCategoryButtons(),
+            const CategoryButtons(),
             const SizedBox(height: 10), // Reducir el espacio entre los switches y los cuadros
-            _buildSwitches(),
+            SwitchButtons(
+              showCourses: _showCourses,
+              onSwitch: (title) {
+                setState(() {
+                  _showCourses = title == 'Mis cursos';
+                });
+              },
+            ),
             const SizedBox(height: 10), // Reducir el espacio entre los switches y los cuadros
             Expanded(
               child: Center(
@@ -133,300 +206,33 @@ class _UserPageState extends State<UserPage> {
                       child: child,
                     );
                   },
-                  child: _showCourses ? _buildCoursesContainer() : _buildLibraryContainer(),
+                  child: _showCourses
+                      ? CoursesContainer(
+                          favoriteCourses: filteredCourses,
+                          onRemove: _removeFromFavorites,
+                          searchController: _searchController,
+                          onSearch: _filterCourses,
+                          isSearching: _isSearching,
+                          filteredCourses: filteredCourses,
+                        )
+                      : LibraryContainer(
+                          isSearching: _isSearching,
+                          searchController: _searchController,
+                          onSearch: (query) {
+                            setState(() {
+                              _isSearching = !_isSearching;
+                              if (!_isSearching) {
+                                _searchController.clear();
+                                _filterBooks('');
+                              } else {
+                                _filterBooks(query);
+                              }
+                            });
+                          },
+                          filteredBooks: _filteredBooks,
+                          onRemove: _removeFromFavorites,
+                        ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AuthScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
-                ),
-                child: const Text('CERRAR SESIÓN'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileCard() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 109, 96, 175),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            backgroundImage: AssetImage('assets/user_image.png'), // Reemplaza con tu imagen
-            radius: 30,
-          ),
-          const SizedBox(width: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user?.email ?? '',
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Text(
-                '',
-                style: TextStyle(color: Colors.white70),
-              ),
-              const Text(
-                '',
-                style: TextStyle(color: Colors.white70),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryButtons() {
-    final categories = ['Música', 'Programación', 'Diseño'];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: categories.map((category) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.cyanAccent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            category,
-            style: const TextStyle(color: Colors.black),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildSwitches() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildSwitchButton('Mis cursos', _showCourses, true),
-        _buildSwitchButton('Mi biblioteca', !_showCourses, false),
-      ],
-    );
-  }
-
-  Widget _buildSwitchButton(String title, bool isSelected, bool isLeft) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _showCourses = title == 'Mis cursos';
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Color.fromARGB(255, 109, 96, 175) : Colors.black54,
-          borderRadius: BorderRadius.horizontal(
-            left: isLeft ? const Radius.circular(8) : Radius.zero,
-            right: isLeft ? Radius.zero : const Radius.circular(8),
-          ),
-        ),
-        child: Text(
-          title,
-          style: const TextStyle(color: Colors.white),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCoursesContainer() {
-    return SizedBox(
-      width: double.infinity,
-      height: 400, // Aumentar la altura de los cuadros
-      child: Container(
-        key: const ValueKey('courses'),
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white24,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Cursos guardados',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            // Aquí puedes agregar más contenido relacionado con los cursos guardados
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLibraryContainer() {
-    return SizedBox(
-      width: double.infinity,
-      height: 400, // Aumentar la altura de los cuadros
-      child: Container(
-        key: const ValueKey('library'),
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white24,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Biblioteca',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = !_isSearching;
-                      if (!_isSearching) {
-                        _searchController.clear();
-                        _filterBooks('');
-                      }
-                    });
-                  },
-                ),
-              ],
-            ),
-            if (_isSearching)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar libros...',
-                    hintStyle: TextStyle(color: Colors.white70),
-                    filled: true,
-                    fillColor: Colors.white24,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                      borderSide: BorderSide.none,
-                    ),
-                    prefixIcon: Icon(Icons.search, color: Colors.white),
-                  ),
-                  style: TextStyle(color: Colors.white),
-                  onChanged: _filterBooks,
-                ),
-              ),
-            const SizedBox(height: 16.0),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _filteredBooks.length,
-                itemBuilder: (context, index) {
-                  final book = _filteredBooks[index];
-                  return _buildDismissibleBookCard(book);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDismissibleBookCard(Map<String, dynamic> book) {
-    return Dismissible(
-      key: Key(book['md5']),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        color: Colors.red,
-        child: const Icon(Icons.delete, color: Colors.white, size: 32),
-      ),
-      onDismissed: (direction) {
-        _removeFromFavorites(book['md5']);
-      },
-      child: _buildBookCard(book),
-    );
-  }
-
-  Widget _buildBookCard(Map<String, dynamic> book) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DetalleLibroPage(
-              title: book['title'],
-              author: book['author'],
-              imageUrl: book['imgUrl'],
-              size: book['size'],
-              genre: book['genre'],
-              year: book['year'],
-              format: book['format'],
-              md5: book['md5'],
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.grey[850],
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.5),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            book['imgUrl'] != null && book['imgUrl'].isNotEmpty
-                ? Image.network(
-                    book['imgUrl'],
-                    height: 150,
-                    width: 100,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.error, size: 150);
-                    },
-                  )
-                : const SizedBox.shrink(),
-            const SizedBox(width: 16.0),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    book['title'],
-                    style: TextStyles.title,
-                  ),
-                  const SizedBox(height: 8.0),
-                  Text(
-                    'Autor: ${book['author']}',
-                    style: TextStyles.bodyText,
-                  ),
-                ],
               ),
             ),
           ],
