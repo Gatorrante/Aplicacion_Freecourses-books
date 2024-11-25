@@ -33,6 +33,10 @@ class _UserPageState extends State<UserPage> {
   String? _firstName;
   String? _lastName;
   String? _university;
+  String? _role;
+  String? _profileImageUrl; // URL de la imagen de perfil
+  List<String> _coursePreferences = [];
+  List<String> _bookPreferences = [];
 
   @override
   void initState() {
@@ -41,6 +45,21 @@ class _UserPageState extends State<UserPage> {
     _fetchFavoriteBooks();
     _fetchFavoriteCourses();
     _fetchUserInfo();
+    _fetchPreferences();
+  }
+
+  Future<void> _fetchPreferences() async {
+    if (user != null) {
+      final userDoc = FirebaseFirestore.instance.collection('users').doc(user!.uid);
+      final preferencesSnapshot = await userDoc.collection('user_data').doc('preferences').get();
+      if (preferencesSnapshot.exists) {
+        final preferencesData = preferencesSnapshot.data()!;
+        setState(() {
+          _coursePreferences = List<String>.from(preferencesData['coursePreferences'] ?? []);
+          _bookPreferences = List<String>.from(preferencesData['bookPreferences'] ?? []);
+        });
+      }
+    }
   }
 
   Future<void> _fetchFavoriteBooks() async {
@@ -77,6 +96,10 @@ class _UserPageState extends State<UserPage> {
           _firstName = data['firstName'];
           _lastName = data['lastName'];
           _university = data['university'];
+          _role = data['role']; // Obtener el rol del usuario
+          _profileImageUrl = data['profileImageId'] != null
+              ? 'https://fortnite-api.com/images/cosmetics/br/${data['profileImageId'].toLowerCase()}/icon.png'
+              : null; // Obtener la URL de la imagen de perfil
         });
       }
     }
@@ -164,7 +187,8 @@ class _UserPageState extends State<UserPage> {
               ).then((_) {
                 _fetchUserInfo();
                 _fetchFavoriteCourses();
-              }); // Recargar datos del usuario al volver
+                _fetchPreferences();
+              }); 
             },
           ),
         ],
@@ -180,10 +204,12 @@ class _UserPageState extends State<UserPage> {
               lastName: _lastName,
               university: _university,
               email: user?.email,
+              role: _role, // Pasar el rol del usuario
+              profileImageUrl: _profileImageUrl, // Pasar la URL de la imagen de perfil
             ),
             const SizedBox(height: 20),
-            const CategoryButtons(),
-            const SizedBox(height: 10), // Reducir el espacio entre los switches y los cuadros
+            CategoryButtons(categories: _showCourses ? _coursePreferences : _bookPreferences),
+            const SizedBox(height: 10), 
             SwitchButtons(
               showCourses: _showCourses,
               onSwitch: (title) {
@@ -192,7 +218,7 @@ class _UserPageState extends State<UserPage> {
                 });
               },
             ),
-            const SizedBox(height: 10), // Reducir el espacio entre los switches y los cuadros
+            const SizedBox(height: 10), 
             Expanded(
               child: Center(
                 child: AnimatedSwitcher(

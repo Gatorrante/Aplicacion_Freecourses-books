@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_application_1/src/pages/HomePage/Login.dart';
+import 'package:flutter_application_1/src/pages/HomePage/widgets/UserPageConfig/ProfileCard.dart';
+import 'package:flutter_application_1/src/pages/HomePage/widgets/UserPageConfig/admin_settings_page.dart';
+import 'package:flutter_application_1/services/fortnite_api.dart';
+import 'text_styles.dart';
 
 class ConfigPage extends StatefulWidget {
   const ConfigPage({super.key});
@@ -19,6 +23,8 @@ class _ConfigPageState extends State<ConfigPage> {
   String? _university;
   List<String> _coursePreferences = [];
   List<String> _bookPreferences = [];
+  String _role = 'user'; // Rol del usuario
+  String? _profileImageId; // ID de la imagen de perfil
 
   final List<String> _institutionTypes = ['colegio', 'tecnico', 'universitario', 'otros'];
   final List<String> _universities = [
@@ -86,6 +92,8 @@ class _ConfigPageState extends State<ConfigPage> {
         _ageController.text = data['age']?.toString() ?? '';
         _institutionType = data['institutionType'] ?? 'colegio';
         _university = data['university'];
+        _role = data['role'] ?? 'user'; // Obtener el rol del usuario
+        _profileImageId = data['profileImageId']; // Obtener la ID de la imagen de perfil
         setState(() {});
       }
 
@@ -112,6 +120,9 @@ class _ConfigPageState extends State<ConfigPage> {
           'age': int.tryParse(_ageController.text),
           'institutionType': _institutionType,
           'university': _university,
+          'role': _role, // Guardar el rol del usuario
+          'profileImageId': _profileImageId, // Guardar la ID de la imagen de perfil
+          'status': 1, // Establecer el estado como activo por defecto
         });
 
         // Guardar preferencias en la subcolección 'user_data/preferences'
@@ -138,6 +149,61 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
+  Future<void> _selectProfileImage() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+
+    try {
+      final images = await FortniteApi.fetchCharacterImages();
+      Navigator.of(context).pop(); // Cerrar el indicador de carga
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Seleccionar Foto de Perfil'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemCount: images.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _profileImageId = images[index]['id'];
+                      });
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Foto de perfil seleccionada')),
+                      );
+                    },
+                    child: Image.network(images[index]['icon'] ?? ''),
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      Navigator.of(context).pop(); // Cerrar el indicador de carga en caso de error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar imágenes: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,9 +216,38 @@ class _ConfigPageState extends State<ConfigPage> {
           key: _formKey,
           child: ListView(
             children: [
+              ProfileCard(
+                firstName: _firstNameController.text,
+                lastName: _lastNameController.text,
+                university: _university,
+                email: FirebaseAuth.instance.currentUser?.email,
+                role: _role, // Pasar el rol del usuario
+                profileImageUrl: _profileImageId != null
+                    ? 'https://fortnite-api.com/images/cosmetics/br/${_profileImageId!.toLowerCase()}/icon.png'
+                    : null, // Pasar la URL de la imagen de perfil
+              ),
+              const SizedBox(height: 16.0),
+              ElevatedButton(
+                onPressed: _selectProfileImage,
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white, backgroundColor: Colors.deepPurple, // Color del texto
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                ),
+                child: const Text('Seleccionar Foto de Perfil'),
+              ),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'Nombre'),
+                decoration: InputDecoration(
+                  labelText: 'Nombre',
+                  labelStyle: const TextStyle(color: Colors.white),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingrese su nombre';
@@ -160,9 +255,17 @@ class _ConfigPageState extends State<ConfigPage> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: _lastNameController,
-                decoration: const InputDecoration(labelText: 'Apellido'),
+                decoration: InputDecoration(
+                  labelText: 'Apellido',
+                  labelStyle: const TextStyle(color: Colors.white),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Por favor ingrese su apellido';
@@ -170,9 +273,17 @@ class _ConfigPageState extends State<ConfigPage> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: _ageController,
-                decoration: const InputDecoration(labelText: 'Edad'),
+                decoration: InputDecoration(
+                  labelText: 'Edad',
+                  labelStyle: const TextStyle(color: Colors.white),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -181,9 +292,16 @@ class _ConfigPageState extends State<ConfigPage> {
                   return null;
                 },
               ),
+              const SizedBox(height: 16.0),
               DropdownButtonFormField<String>(
                 value: _institutionType,
-                decoration: const InputDecoration(labelText: 'Tipo de Institución'),
+                decoration: InputDecoration(
+                  labelText: 'Tipo de Institución',
+                  labelStyle: const TextStyle(color: Colors.white),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                ),
                 items: _institutionTypes.map((type) {
                   return DropdownMenuItem(
                     value: type,
@@ -202,9 +320,17 @@ class _ConfigPageState extends State<ConfigPage> {
                 dropdownColor: Colors.black, // Cambia el color de fondo del menú desplegable
               ),
               if (_institutionType == 'universitario')
+                const SizedBox(height: 16.0),
+              if (_institutionType == 'universitario')
                 DropdownButtonFormField<String>(
                   value: _university,
-                  decoration: const InputDecoration(labelText: 'Universidad'),
+                  decoration: InputDecoration(
+                    labelText: 'Universidad',
+                    labelStyle: const TextStyle(color: Colors.white),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+                  ),
                   items: _universities.map((university) {
                     return DropdownMenuItem(
                       value: university,
@@ -220,7 +346,7 @@ class _ConfigPageState extends State<ConfigPage> {
                   dropdownColor: Colors.black, // Cambia el color de fondo del menú desplegable
                 ),
               const SizedBox(height: 16.0),
-              const Text('Preferencias de Cursos'),
+              const Text('Preferencias de Cursos', style: TextStyle(fontWeight: FontWeight.bold)),
               Wrap(
                 spacing: 8.0,
                 children: _courseCategories.map((category) {
@@ -248,7 +374,7 @@ class _ConfigPageState extends State<ConfigPage> {
                 }).toList(),
               ),
               const SizedBox(height: 16.0),
-              const Text('Preferencias de Libros'),
+              const Text('Preferencias de Libros', style: TextStyle(fontWeight: FontWeight.bold)),
               Wrap(
                 spacing: 8.0,
                 children: _bookCategories.map((category) {
@@ -278,11 +404,43 @@ class _ConfigPageState extends State<ConfigPage> {
               const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: _saveUserData,
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white, backgroundColor: Colors.deepPurple, // Color del texto
+                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                ),
                 child: const Text('Guardar'),
               ),
               const SizedBox(height: 16.0),
+              if (_role == 'admin') 
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AdminSettingsPage()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white, backgroundColor: Colors.deepPurple, // Color del texto
+                    padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+                  ),
+                  child: const Text('Ajustes de Administrador'),
+                ),
+              const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: _signOut,
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white, backgroundColor: Colors.red, // Color del texto
+                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                ),
                 child: const Text('Cerrar Sesión'),
               ),
             ],
