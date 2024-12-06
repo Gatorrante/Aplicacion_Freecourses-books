@@ -33,8 +33,8 @@ APPrende+ is an educational platform that provides users with access to free cou
 #### Cloning the Repository
 
 ```sh
-git clone https://github.com/tu-usuario/APPS_BOOKS_2024.git
-cd APPS_BOOKS_2024
+git clone https://github.com/Gatorrante/Apprende-Free-Books-and-Courses-app.git
+cd Apprende-Free-Books-and-Courses-app
 ```
 ### Firebase Integration
 
@@ -244,8 +244,8 @@ APPrende+ es una plataforma educativa que brinda a los usuarios acceso a cursos 
 #### Clonar el Repositorio
 
 ```sh
-git clone https://github.com/tu-usuario/APPS_BOOKS_2024.git
-cd APPS_BOOKS_2024
+git clone https://github.com/Gatorrante/Apprende-Free-Books-and-Courses-app.git
+cd Apprende-Free-Books-and-Courses-app
 ```
 ### Integración de Firebase
 
