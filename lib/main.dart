@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'src/pages/HomePage/HomePage.dart';
 import 'src/pages/HomePage/Login.dart';
-import 'src/pages/HomePage/UserPage.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -38,7 +37,7 @@ class ApprendeApp extends StatelessWidget {
       darkTheme: ThemeData.dark(),
       themeMode: ThemeMode.light,
       home: const AuthWrapper(),
-      debugShowCheckedModeBanner: false, // Quitar el banner de depuración
+      debugShowCheckedModeBanner: false, 
     );
   }
 }

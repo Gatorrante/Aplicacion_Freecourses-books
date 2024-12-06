@@ -3,14 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'HomePage.dart';
-import 'UserPage.dart';
-import 'widgets/text_styles.dart';
+
 
 class AuthScreen extends StatelessWidget {
   const AuthScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final TextEditingController emailController = TextEditingController();
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -23,10 +24,10 @@ class AuthScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            LoginTab(),
-            RegisterTab(),
+            LoginTab(emailController: emailController),
+            RegisterTab(emailController: emailController),
           ],
         ),
       ),
@@ -35,30 +36,29 @@ class AuthScreen extends StatelessWidget {
 }
 
 class LoginTab extends StatefulWidget {
-  const LoginTab({super.key});
+  final TextEditingController emailController;
+
+  const LoginTab({super.key, required this.emailController});
 
   @override
   _LoginTabState createState() => _LoginTabState();
 }
 
 class _LoginTabState extends State<LoginTab> {
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  String _errorMessage = '';
+  bool _obscurePassword = true;
 
   Future<void> _signIn() async {
     try {
       final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text,
+        email: widget.emailController.text,
         password: _passwordController.text,
       );
 
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).get();
       if (userDoc.exists && userDoc.data()!['status'] == 0) {
         await FirebaseAuth.instance.signOut();
-        setState(() {
-          _errorMessage = 'Esta cuenta no existe.';
-        });
+        _showErrorSnackBar('Esta cuenta no existe.');
       } else {
         Navigator.pushReplacement(
           context,
@@ -66,23 +66,30 @@ class _LoginTabState extends State<LoginTab> {
         );
       }
     } catch (e) {
-      setState(() {
-        if (e is FirebaseAuthException) {
-          switch (e.code) {
-            case 'invalid-email':
-              _errorMessage = 'La dirección de correo electrónico está mal formateada.';
-              break;
-            case 'weak-password':
-              _errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
-              break;
-            default:
-              _errorMessage = 'Error: ${e.message}'; 
-          }
-        } else {
-          _errorMessage = 'Error: $e';
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'invalid-email':
+            _showErrorSnackBar('La dirección de correo electrónico está mal formateada.');
+            break;
+          case 'wrong-password':
+            _showErrorSnackBar('La contraseña es incorrecta.');
+            break;
+          default:
+            _showErrorSnackBar('Error: ${e.message}');
         }
-      });
+      } else {
+        _showErrorSnackBar('Error: $e');
+      }
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -119,7 +126,7 @@ class _LoginTabState extends State<LoginTab> {
               TypewriterAnimatedText(
                 '¡Bienvenido a APPrende+!',
                 textStyle: const TextStyle(
-                  fontSize: 32.0,
+                  fontSize: 24.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.blue,
                 ),
@@ -141,7 +148,7 @@ class _LoginTabState extends State<LoginTab> {
           ),
           const SizedBox(height: 32),
           TextField(
-            controller: _emailController,
+            controller: widget.emailController,
             decoration: InputDecoration(
               labelText: 'Correo electrónico',
               border: OutlineInputBorder(
@@ -152,20 +159,24 @@ class _LoginTabState extends State<LoginTab> {
           const SizedBox(height: 16),
           TextField(
             controller: _passwordController,
-            obscureText: true,
+            obscureText: _obscurePassword,
             decoration: InputDecoration(
               labelText: 'Contraseña',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16.0),
               ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          if (_errorMessage.isNotEmpty)
-            Text(
-              _errorMessage,
-              style: TextStyles.errorText,
-            ),
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _signIn,
@@ -184,45 +195,85 @@ class _LoginTabState extends State<LoginTab> {
 }
 
 class RegisterTab extends StatefulWidget {
-  const RegisterTab({super.key});
+  final TextEditingController emailController;
+
+  const RegisterTab({super.key, required this.emailController});
 
   @override
   _RegisterTabState createState() => _RegisterTabState();
 }
 
 class _RegisterTabState extends State<RegisterTab> {
-  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  String _errorMessage = '';
+  bool _obscurePassword = true;
 
   Future<void> _register() async {
-    try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
-    } catch (e) {
-      setState(() {
-        if (e is FirebaseAuthException) {
-          switch (e.code) {
-            case 'invalid-email':
-              _errorMessage = 'La dirección de correo electrónico está mal formateada.';
-              break;
-            case 'weak-password':
-              _errorMessage = 'La contraseña debe tener al menos 6 caracteres.';
-              break;
-            default:
-              _errorMessage = 'Error: ${e.message}';
-          }
-        } else {
-          _errorMessage = 'Error: $e';
-        }
-      });
+    final email = widget.emailController.text;
+    final password = _passwordController.text;
+
+    if (!_isValidEmail(email)) {
+      _showErrorSnackBar('Por favor ingrese un correo electrónico válido.');
+      return;
     }
+
+    if (!_isValidPassword(password)) {
+      _showErrorSnackBar('La contraseña debe tener al menos 6 caracteres, incluyendo una letra mayúscula y un carácter especial.');
+      return;
+    }
+
+    try {
+      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      if (methods.isNotEmpty) {
+        _showErrorSnackBar('El correo electrónico ya está registrado.');
+        return;
+      }
+
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      widget.emailController.text = email;
+      _passwordController.clear();
+      DefaultTabController.of(context).animateTo(0);
+    } catch (e) {
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'invalid-email':
+            _showErrorSnackBar('La dirección de correo electrónico está mal formateada.');
+            break;
+          case 'weak-password':
+            _showErrorSnackBar('La contraseña debe tener al menos 6 caracteres.');
+            break;
+          case 'email-already-in-use':
+            _showErrorSnackBar('El correo electrónico ya está registrado.');
+            break;
+          default:
+            _showErrorSnackBar('Error: ${e.message}');
+        }
+      } else {
+        _showErrorSnackBar('Error: $e');
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@(gmail\.com|outlook\.com|yahoo\.com)$');
+    return emailRegex.hasMatch(email);
+  }
+
+  bool _isValidPassword(String password) {
+    final passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$');
+    return passwordRegex.hasMatch(password);
   }
 
   @override
@@ -248,8 +299,7 @@ class _RegisterTabState extends State<RegisterTab> {
                 style: TextStyle(
                   color: Color(0xFF36E58C),
                   fontWeight: FontWeight.bold,
-                  fontSize: 32.0,
-                ),
+                  fontSize: 32.0),
               ),
             ],
           ),
@@ -259,14 +309,14 @@ class _RegisterTabState extends State<RegisterTab> {
               TypewriterAnimatedText(
                 '¡Bienvenido a APPrende+!',
                 textStyle: const TextStyle(
-                  fontSize: 32.0,
+                  fontSize: 24.0,
                   fontWeight: FontWeight.bold,
                   color: Colors.blue,
                 ),
                 speed: const Duration(milliseconds: 100),
               ),
               TypewriterAnimatedText(
-                'Regístrate para continuar',
+                'Regístrate para comenzar',
                 textStyle: const TextStyle(
                   fontSize: 24.0,
                   color: Colors.white,
@@ -276,12 +326,10 @@ class _RegisterTabState extends State<RegisterTab> {
             ],
             totalRepeatCount: 1,
             pause: const Duration(milliseconds: 1000),
-            displayFullTextOnTap: true,
-            stopPauseOnTap: true,
           ),
           const SizedBox(height: 32),
           TextField(
-            controller: _emailController,
+            controller: widget.emailController,
             decoration: InputDecoration(
               labelText: 'Correo electrónico',
               border: OutlineInputBorder(
@@ -292,20 +340,25 @@ class _RegisterTabState extends State<RegisterTab> {
           const SizedBox(height: 16),
           TextField(
             controller: _passwordController,
-            obscureText: true,
+            obscureText: _obscurePassword,
             decoration: InputDecoration(
               labelText: 'Contraseña',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16.0),
               ),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          if (_errorMessage.isNotEmpty)
-            Text(
-              _errorMessage,
-              style: TextStyles.errorText,
-            ),
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _register,

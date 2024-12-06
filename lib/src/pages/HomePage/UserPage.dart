@@ -2,12 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/model/course.dart';
-import 'Login.dart';
-import 'widgets/text_styles.dart';
-import 'widgets/app_styles.dart';
-import 'widgets/detalle_libro.dart';
 import 'widgets/config.dart'; 
-import 'package:flutter_application_1/services/annas_archive_api.dart';
 import 'widgets/UserPageConfig/ProfileCard.dart';
 import 'widgets/UserPageConfig/CategoryButtons.dart';
 import 'widgets/UserPageConfig/SwitchButtons.dart';
@@ -34,7 +29,7 @@ class _UserPageState extends State<UserPage> {
   String? _lastName;
   String? _university;
   String? _role;
-  String? _profileImageUrl; // URL de la imagen de perfil
+  String? _profileImageUrl; 
   List<String> _coursePreferences = [];
   List<String> _bookPreferences = [];
 
@@ -96,10 +91,10 @@ class _UserPageState extends State<UserPage> {
           _firstName = data['firstName'];
           _lastName = data['lastName'];
           _university = data['university'];
-          _role = data['role']; // Obtener el rol del usuario
+          _role = data['role'];
           _profileImageUrl = data['profileImageId'] != null
               ? 'https://fortnite-api.com/images/cosmetics/br/${data['profileImageId'].toLowerCase()}/icon.png'
-              : null; // Obtener la URL de la imagen de perfil
+              : null; 
         });
       }
     }
@@ -134,14 +129,14 @@ class _UserPageState extends State<UserPage> {
     });
   }
 
-  Future<void> _removeFromFavorites(String title) async {
+  Future<void> _removeFromFavorites(String md5) async {
     if (user != null) {
       final userDoc = FirebaseFirestore.instance.collection('users').doc(user!.uid);
-      final coursesCollection = userDoc.collection('courses');
-      await coursesCollection.doc(title).delete();
+      final favoritesCollection = userDoc.collection('favorites');
+      await favoritesCollection.doc(md5).delete();
       setState(() {
-        favoriteCourses.removeWhere((course) => course.title == title);
-        filteredCourses.removeWhere((course) => course.title == title);
+        favoriteBooks.removeWhere((book) => book['md5'] == md5);
+        _filteredBooks.removeWhere((book) => book['md5'] == md5);
       });
     }
   }
@@ -204,8 +199,8 @@ class _UserPageState extends State<UserPage> {
               lastName: _lastName,
               university: _university,
               email: user?.email,
-              role: _role, // Pasar el rol del usuario
-              profileImageUrl: _profileImageUrl, // Pasar la URL de la imagen de perfil
+              role: _role, 
+              profileImageUrl: _profileImageUrl, 
             ),
             const SizedBox(height: 20),
             CategoryButtons(categories: _showCourses ? _coursePreferences : _bookPreferences),

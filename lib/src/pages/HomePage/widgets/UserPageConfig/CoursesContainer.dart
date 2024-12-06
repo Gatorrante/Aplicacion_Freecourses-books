@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/model/course.dart';
 import 'package:flutter_application_1/src/pages/HomePage/widgets/course_detail_page.dart';
-import 'package:flutter_application_1/src/pages/HomePage/widgets/text_styles.dart';
-import 'package:flutter_application_1/src/pages/HomePage/widgets/app_styles.dart';
 import 'course_card.dart';
 
 class CoursesContainer extends StatelessWidget {
@@ -99,7 +97,10 @@ class CoursesContainer extends StatelessWidget {
                             ),
                           );
                         },
-                        child: CourseCard(course: course),
+                        child: Container(
+                          width: double.infinity,
+                          child: CourseCard(course: course),
+                        ),
                       ),
                     );
                   },

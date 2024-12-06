@@ -30,7 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  url_launcher: ^6.1.7
+  url_launcher: ^6.3.1
+  carousel_slider: ^5.0.0
   shared_preferences: ^2.0.6
   intl: ^0.19.0
   #dependencia que convierte de html a texto legible xd
@@ -43,6 +44,7 @@ dependencies:
   cloud_firestore: ^5.4.4
   animated_text_kit: ^4.2.1
   shimmer: ^2.0.0
+  marquee: ^2.0.0
   
 
 dev_dependencies:
@@ -65,6 +67,7 @@ flutter:
   assets:
     - assets/user_image.png
     - assets/app_icon.png
+    - assets/Icons/courses_icon.png
    # - assets/Icons/online_course_logo.jpg
     #- assets/Icons/udemy_logo.jpg
 
