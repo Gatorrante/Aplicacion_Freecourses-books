@@ -18,11 +18,19 @@ APPrende+ is an educational platform that provides users with access to free cou
 - Web page for course announcement administration (add, edit, delete) for administrators  
 ### Screenshots
 
-![Homepage](assets/screenshots/Homepage.png)  
-![Books Page](assets/screenshots/Books_page.png)  
-![Courses Page](assets/screenshots/Courses_page.png)  
-![User Page](assets/screenshots/User_page.png)  
-![Add Announcement Page](assets/screenshots/Add_news_page.png)  
+#### Mobile
+
+| Homepage                      | Books Page                         | Courses Page                        |
+|-----------------------------------------|------------------------------------------|------------------------------------------|
+| ![Homepage](assets/screenshots/Homepage.png) | ![Books Page](assets/screenshots/Books_page.png) | ![Courses Page](assets/screenshots/Courses_page.png) |
+
+#### Administration
+
+| User Page                       | Add Announcement Website                             |
+|-----------------------------------------|------------------------------------------|
+| ![User Page](assets/screenshots/User_page.png) | ![Add Announcement](assets/screenshots/Add_news_page.png) |
+
+
 ### Getting Started
 
 #### Prerequisites
@@ -228,11 +236,18 @@ APPrende+ es una plataforma educativa que brinda a los usuarios acceso a cursos 
 
 ### Capturas de Pantalla
 
-![Página Principal](assets/screenshots/Homepage.png)  
-![Página de Libros](assets/screenshots/Books_page.png)  
-![Página de Cursos](assets/screenshots/Courses_page.png)  
-![Página de Usuario](assets/screenshots/User_page.png)  
-![Página para Agregar Anuncios](assets/screenshots/Add_news_page.png)  
+#### Móvil
+
+| Página Principal                        | Página de Libros                         | Página de Cursos                         |
+|-----------------------------------------|------------------------------------------|------------------------------------------|
+| ![Página Principal](assets/screenshots/Homepage.png) | ![Página de Libros](assets/screenshots/Books_page.png) | ![Página de Cursos](assets/screenshots/Courses_page.png) |
+
+#### Administración
+
+| Página de Usuario                       | Agregar Anuncio                          |
+|-----------------------------------------|------------------------------------------|
+| ![Página de Usuario](assets/screenshots/User_page.png) | ![Agregar Anuncio](assets/screenshots/Add_news_page.png) |
+ 
 
 ### Comenzando
 
